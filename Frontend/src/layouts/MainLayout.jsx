@@ -1,53 +1,149 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ROLE_LABELS } from '../constants/roles';
+import { useEffect, useState } from 'react';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import Topbar from '../components/Topbar';
+import AppIcon from '../components/AppIcon';
+import { getNavigationForRole } from '../constants/navigation';
+import { ROLES } from '../constants/roles';
+import { roleProfiles } from '../data/mockData';
+import { logout } from '../api/pimsApi';
+import { clearSession, getStoredRole } from '../utils/session';
+import { clearAuthState } from '../store/slices/authSlice';
 
-const navigation = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/atc', label: 'ATC Classification' },
-  { to: '/prescription/new', label: 'New Prescription' },
-  { to: '/prescriptions', label: 'Prescriptions' },
-  { to: '/inventory', label: 'Inventory' },
-  { to: '/alerts', label: 'Alerts' },
-  { to: '/reports', label: 'Reports' },
-  { to: '/admin/users', label: 'User Management' }
-];
+function navLinkClass({ isActive }) {
+  return isActive ? 'nav-link active' : 'nav-link';
+}
+
+const SIDEBAR_PREFERENCE_KEY = 'pims_sidebar_open';
 
 export default function MainLayout({ children }) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
-  const role = localStorage.getItem('pims_role') || 'DOCTOR';
+  const role = useSelector((state) => state.auth.role) || getStoredRole();
+  const profile = roleProfiles[role] || roleProfiles[ROLES.DOCTOR];
+  const navigation = getNavigationForRole(role);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(() => {
+    const stored = localStorage.getItem(SIDEBAR_PREFERENCE_KEY);
+    return stored !== 'false';
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem('pims_token');
-    localStorage.removeItem('pims_role');
-    navigate('/login');
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1100px)');
+
+    const handleViewportChange = () => {
+      const mobile = mediaQuery.matches;
+      setIsMobileViewport(mobile);
+
+      if (!mobile) {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    handleViewportChange();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleViewportChange);
+      return () => mediaQuery.removeEventListener('change', handleViewportChange);
+    }
+
+    mediaQuery.addListener(handleViewportChange);
+    return () => mediaQuery.removeListener(handleViewportChange);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_PREFERENCE_KEY, isDesktopSidebarOpen ? 'true' : 'false');
+  }, [isDesktopSidebarOpen]);
+
+  const isSidebarOpen = isMobileViewport ? isMobileSidebarOpen : isDesktopSidebarOpen;
+
+  const toggleSidebar = () => {
+    if (isMobileViewport) {
+      setIsMobileSidebarOpen((current) => !current);
+      return;
+    }
+
+    setIsDesktopSidebarOpen((current) => !current);
+  };
+
+  const closeMobileSidebar = () => {
+    if (isMobileViewport) {
+      setIsMobileSidebarOpen(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (_error) {
+      // Local cleanup still matters even if the backend session helper call fails.
+    } finally {
+      clearSession();
+      dispatch(clearAuthState());
+      navigate('/login');
+    }
   };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <h1>PIMS</h1>
-        <p className="helper-text" style={{ color: 'rgba(247, 249, 255, 0.72)' }}>
-          {ROLE_LABELS[role] || role}
-        </p>
-        <nav>
+    <div className={`app-shell ${isSidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'} ${isMobileViewport ? 'sidebar-mobile-layout' : ''}`.trim()}>
+      {isMobileViewport && isSidebarOpen ? (
+        <button aria-label="Close navigation drawer" className="sidebar-overlay" onClick={closeMobileSidebar} type="button" />
+      ) : null}
+
+      <aside className={`sidebar ${isSidebarOpen ? 'is-open' : 'is-closed'}`.trim()}>
+        <div className="brand-block">
+          <button
+            aria-label="Go to dashboard"
+            className="brand-mark"
+            onClick={() => {
+              const homeRoute = role === ROLES.DOCTOR ? '/dashboard' : role === ROLES.PHARMACIST ? '/pharmacist' : '/patient';
+              navigate(homeRoute);
+            }}
+            type="button"
+          >
+            <AppIcon name="brand" size={22} />
+          </button>
+          <div className="brand-copy">
+            <strong>PIMS</strong>
+            <span className="helper-text">{profile.title}</span>
+          </div>
+          <button aria-label="Toggle sidebar" className="sidebar-toggle sidebar-toggle-in-panel" onClick={toggleSidebar} type="button">
+            <AppIcon name={isSidebarOpen ? 'close' : 'menu'} size={18} />
+          </button>
+        </div>
+
+        <nav aria-label="Primary navigation" className="sidebar-nav">
           {navigation.map((item) => (
-            <NavLink key={item.to} to={item.to} className={location.pathname === item.to ? 'active' : ''}>
-              {item.label}
+            <NavLink key={item.to} className={navLinkClass} onClick={closeMobileSidebar} to={item.to}>
+              <AppIcon name={item.icon} size={18} />
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
-        <div style={{ marginTop: '1.5rem' }}>
-          <button className="secondary-btn" onClick={handleLogout} type="button">
-            Logout
+
+        <div className="sidebar-spacer" />
+
+        <div className="sidebar-footer">
+          <Link className="sidebar-action" onClick={closeMobileSidebar} to="/change-password">
+            <AppIcon name="settings" size={18} />
+            <span>Settings</span>
+          </Link>
+          <button className="sidebar-action" onClick={handleLogout} type="button">
+            <AppIcon name="logout" size={18} />
+            <span>Logout</span>
           </button>
         </div>
       </aside>
-      <main className="main-content">
-        <Topbar />
-        {children}
-      </main>
+
+      <section className="app-main">
+        <Topbar isSidebarOpen={isSidebarOpen} onMenuToggle={toggleSidebar} showMenuToggle />
+        <main className="page-content">{children}</main>
+        <footer className="app-footer">
+          <span>© 2026 PIMS · Pharmacy Information Management System · Integration pass</span>
+          <span>Last sync: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </footer>
+      </section>
     </div>
   );
 }

@@ -1,0 +1,74 @@
+import mongoose from 'mongoose'
+
+const userSchema = new mongoose.Schema(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    passwordHash: {
+      type: String,
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ['DOCTOR', 'PHARMACIST', 'ADMIN', 'PATIENT'],
+      required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+userSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.passwordHash
+    delete ret.passwordResetTokenHash
+    delete ret.passwordResetTokenExpiresAt
+    delete ret.passwordChangedAt
+    delete ret.__v
+    return ret
+  },
+})
+
+userSchema.methods.toSafeObject = function toSafeObject() {
+  return this.toJSON()
+}
+
+const User = mongoose.models.User || mongoose.model('User', userSchema)
+
+export default User

@@ -1,22 +1,27 @@
 import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { ROLES } from '../constants/roles';
-
-function getAuthState() {
-  return {
-    token: localStorage.getItem('pims_token'),
-    role: localStorage.getItem('pims_role')
-  };
-}
+import { getRoleHomePath, getStoredRole, isValidRole } from '../utils/session';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { token, role } = getAuthState();
+  const token = useSelector((state) => state.auth.token);
+  const role = useSelector((state) => state.auth.role) || getStoredRole();
+  const authStatus = useSelector((state) => state.auth.status);
+
+  if (authStatus === 'checking' || (authStatus === 'idle' && token)) {
+    return null;
+  }
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate replace to="/login" />;
+  }
+
+  if (!isValidRole(role)) {
+    return <Navigate replace to="/login" />;
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate replace to={getRoleHomePath(role)} />;
   }
 
   return children;

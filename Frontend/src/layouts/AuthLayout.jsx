@@ -1,3 +1,24 @@
+import AppIcon from '../components/AppIcon';
+
 export default function AuthLayout({ children }) {
-  return <div className="login-page">{children}</div>;
+  return (
+    <div className="auth-shell">
+      <div className="auth-topbar">
+        <span className="helper-text">PIMS secure access</span>
+        <button className="button-ghost" type="button">
+          <AppIcon name="info" size={16} />
+          Support Help
+        </button>
+      </div>
+      <main className="login-page">{children}</main>
+      <footer className="auth-footer">
+        <span>© 2026 PIMS Medical Informatics Inc. · System status: Operational</span>
+        <div className="auth-footer-links">
+          <span>Privacy Policy</span>
+          <span>Security Audit</span>
+          <span>Language: EN (US)</span>
+        </div>
+      </footer>
+    </div>
+  );
 }

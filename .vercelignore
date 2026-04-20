@@ -1,0 +1,10 @@
+Backend
+.git
+.gitignore
+AI_GUIDE.md
+README.md
+SYSTEM_ARCHITECTURE_DETAILED.md
+FRONTEND_DESIGN_DETAILED.md
+node_modules
+.env.local
+.env.*.local

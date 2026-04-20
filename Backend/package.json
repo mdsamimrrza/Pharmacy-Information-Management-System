@@ -1,0 +1,30 @@
+{
+  "name": "pims-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.4",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.1"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "build": "cd ../Frontend && npm install && npm run build",
+    "start": "node src/server.js",
+    "test": "node --test tests/**/*.test.js",
+    "seed:atc": "node src/jobs/seedATC.js",
+    "seed:users": "node src/jobs/seedUsers.js",
+    "verify:modules": "node scripts/verify-modules.mjs"
+  }
+}
