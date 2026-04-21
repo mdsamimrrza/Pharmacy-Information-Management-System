@@ -1807,6 +1807,11 @@ html.dark .manage-user-meta-item strong {
   background: #ffffff;
 }
 
+html.dark .pharmacist-landing-shell > .pharmacist-landing-header {
+  background: var(--surface) !important;
+  border-bottom-color: var(--line);
+}
+
 .pharmacist-landing-brand {
   display: flex;
   align-items: center;
