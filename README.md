@@ -1,11 +1,11 @@
 # PIMS — Pharmacy Information Management System
 
-> **Version:** 1.0.0 | **Status:** Active Development | **Sprint:** April 2025
+> **Version:** 1.0.0 | **Status:** Active Development | **Last Updated:** April 2026
 >
 > A role-based, full-stack **web application** for managing ATC-classified prescriptions,
 > drug inventory, and pharmacy workflows.
 >
-> **Stack:** React + Vite + Tailwind CSS (frontend) · Express.js + Node.js (backend) · MongoDB + Mongoose (database)
+> **Stack:** React + Vite + Redux Toolkit + Tailwind CSS (frontend) · Express.js + Node.js (backend) · MongoDB + Mongoose (database)
 
 ---
 

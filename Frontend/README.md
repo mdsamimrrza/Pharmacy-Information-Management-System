@@ -28,17 +28,36 @@ Web only (React + Vite). No mobile or desktop app.
 | Vite | ^5.x | Dev server + build tool |
 | Tailwind CSS | ^3.x | Utility-first styling |
 | React Router DOM | ^6.x | Client-side routing + protected pages |
-| Axios | ^1.x | API client |
+| Redux Toolkit | ^2.2.x | Global state management (auth, user management) |
+| Axios | ^1.x | HTTP client with JWT interceptor |
 | React Hook Form | ^7.x | Form handling and validation |
 | Recharts | ^2.x | Reports and analytics charts |
-| Context API | built-in | Auth/session state (no Redux) |
 
 Notes:
 
-- No Redux for MVP scope.
-- No Ant Design or MUI in the planned implementation.
+- Redux Toolkit is used for auth and admin user management state.
+- No Ant Design or MUI; all styling uses Tailwind CSS and custom CSS.
+- Environment variables are read from `.env` file (e.g., `VITE_API_BASE_URL`, `VITE_ADMIN_LOGIN_KEY`).
 
-## Folder Structure (Planned Reference)
+## Development Setup
+
+```bash
+cd Frontend
+npm install
+cp .env.example .env  # Create environment config
+npm run dev          # Start Vite dev server on http://localhost:5173
+```
+
+**Note:** The dev server proxies `/api/*` requests to the backend (default `http://localhost:5000`), or to production API if `VITE_API_BASE_URL` is configured.
+
+Build for production:
+
+```bash
+npm run build        # Generate optimized build in dist/
+npm run preview      # Preview production build locally
+```
+
+## Folder Structure (Reference)
 
 ```text
 /frontend

@@ -47,7 +47,11 @@ npm run dev
 Health check:
 
 ```bash
+# Default port is 5000 (configurable via PORT environment variable)
 GET http://localhost:5000/api/health
+
+# On production (e.g., Vercel), use the deployed domain
+GET https://pims-sys.vercel.app/api/health
 ```
 
 ## Environment Variables
@@ -62,13 +66,13 @@ Required:
 
 Optional:
 
-- `PORT` (default: `5000`)
+- `PORT` (default: `5000`) — Backend server port
 - `ENABLE_BACKGROUND_JOBS` (`false` disables interval jobs)
-- `LOW_STOCK_JOB_INTERVAL_MS`
-- `EXPIRY_JOB_INTERVAL_MS`
-- `EMAIL_MODE` (`file` or `disabled`)
-- `EMAIL_OUTBOX_DIR` (default: `outbox`)
-- `PHARMACY_NOTIFICATION_EMAIL`
+- `LOW_STOCK_JOB_INTERVAL_MS` — Interval for low stock check job
+- `EXPIRY_JOB_INTERVAL_MS` — Interval for expiry check job
+- `EMAIL_MODE` (`file` or `disabled`) — Email output mode for alerts
+- `EMAIL_OUTBOX_DIR` (default: `outbox`) — Directory for email artifacts
+- `PHARMACY_NOTIFICATION_EMAIL` — Email for pharmacy alerts
 
 ### MongoDB Atlas Notes
 
@@ -95,9 +99,20 @@ JWT is sent as:
 Authorization: Bearer <token>
 ```
 
-Auth routes:
+### Key User Management Routes
 
-- `POST /api/auth/setup-admin` - one-time first-admin bootstrap
+**User CRUD:**
+- `POST /api/users` - Create new user
+- `GET /api/users` - List all users (admin only)
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user status (activate/deactivate)
+- `DELETE /api/users/:id` - Soft delete (deactivate) user
+- `DELETE /api/users/:id/permanent` - Permanently delete user from system
+
+**Auth Routes:**
+- `POST /api/auth/setup-admin` - One-time first-admin bootstrap (token: `test1234567890` in development)
+- `POST /api/auth/login` - User login (returns JWT)
+- `POST /api/auth/logout` - User logout
 - `POST /api/auth/login` - login with email, password, and optional role hint
 - `GET /api/auth/me` - current authenticated user
 - `POST /api/auth/logout` - client-side logout helper
