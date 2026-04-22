@@ -5,6 +5,7 @@ import app from './app.js'
 import { validateEnv } from './config/env.js'
 import { connectDatabase } from './config/db.js'
 import { startBackgroundJobs } from './jobs/index.js'
+import { bootstrapDefaultUsersIfEmpty } from './services/auth.service.js'
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = dirname(currentFilePath)
@@ -15,6 +16,11 @@ dotenv.config({ path: envPath })
 const start = async () => {
   validateEnv()
   await connectDatabase()
+
+  const bootstrapResult = await bootstrapDefaultUsersIfEmpty()
+  if (bootstrapResult?.seeded) {
+    console.log(`Synchronized ${bootstrapResult.count} default demo auth users`)
+  }
 
   const port = Number(process.env.PORT || 5000)
   const server = app.listen(port, () => {

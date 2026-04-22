@@ -36,6 +36,60 @@ const toAuthPayload = (user) => ({
   }),
 })
 
+const DEFAULT_BOOTSTRAP_USERS = [
+  {
+    firstName: 'Asha',
+    lastName: 'Rao',
+    email: 'doctor@pims.com',
+    password: 'test123',
+    role: 'DOCTOR',
+  },
+  {
+    firstName: 'Naveen',
+    lastName: 'Kumar',
+    email: 'pharma@pims.com',
+    password: 'test123',
+    role: 'PHARMACIST',
+  },
+  {
+    firstName: 'Sara',
+    lastName: 'Joseph',
+    email: 'admin@pims.com',
+    password: 'test123',
+    role: 'ADMIN',
+  },
+]
+
+export const bootstrapDefaultUsersIfEmpty = async () => {
+  const shouldSyncDemoUsers = String(process.env.BOOTSTRAP_DEMO_USERS || 'true').trim().toLowerCase() === 'true'
+
+  if (!shouldSyncDemoUsers) {
+    return { seeded: false, reason: 'disabled-by-env' }
+  }
+
+  for (const seedUser of DEFAULT_BOOTSTRAP_USERS) {
+    await User.updateOne(
+      { email: normalizeEmail(seedUser.email) },
+      {
+        $set: {
+          firstName: seedUser.firstName,
+          lastName: seedUser.lastName,
+          email: normalizeEmail(seedUser.email),
+          passwordHash: hashPassword(seedUser.password),
+          role: seedUser.role,
+          isActive: true,
+          failedLoginAttempts: 0,
+          lockUntil: null,
+          passwordChangedAt: markPasswordChangedAt(),
+        },
+      },
+      { upsert: true }
+    )
+  }
+
+  return { seeded: true, count: DEFAULT_BOOTSTRAP_USERS.length, mode: 'sync' }
+}
+
 export const authenticateUser = async ({ email, password, role }) => {
   const user = await User.findOne({ email: normalizeEmail(email) })
 
