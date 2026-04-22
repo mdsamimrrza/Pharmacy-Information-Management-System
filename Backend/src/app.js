@@ -8,6 +8,9 @@ import { apiLimiter } from './middlewares/rateLimiter.middleware.js'
 
 const app = express()
 
+// Trust proxy for rate limiting (Render uses proxies)
+app.set('trust proxy', 1)
+
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map(url => url.trim())
