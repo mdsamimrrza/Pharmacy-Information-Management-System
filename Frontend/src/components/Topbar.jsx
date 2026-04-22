@@ -52,6 +52,7 @@ export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebar
   const initials = getInitials(displayName);
   const patientId = patientRecord?.patientId || storedUser?.patientId || '';
   const emailAddress = storedUser?.email || '';
+  const lastLoginAt = useSelector((state) => state.auth.lastLoginAt);
 
   useEffect(() => {
     setIsProfileMenuOpen(false);
@@ -129,7 +130,7 @@ export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebar
         <h1>{getPageTitle(location.pathname)}</h1>
       </div>
       <div className={`topbar-actions ${isPatientPortal ? 'patient-topbar-actions' : ''}`.trim()}>
-        {!isPatientPortal ? (
+        {!isPatientPortal && (
           <>
             <label className="search-field topbar-search">
               <AppIcon name="search" size={18} />
@@ -140,89 +141,83 @@ export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebar
             </button>
             <DarkModeToggle />
           </>
-        ) : (
-          <>
-            <div className="patient-topbar-meta">
-              <span className="badge badge-accent">Patient Portal</span>
-
-              <div className={`profile-menu ${isProfileMenuOpen ? 'is-open' : ''}`.trim()} ref={profileMenuRef}>
-                <button
-                  aria-expanded={isProfileMenuOpen}
-                  aria-haspopup="dialog"
-                  className="profile-chip profile-chip-button"
-                  onClick={() => setIsProfileMenuOpen((current) => !current)}
-                  type="button"
-                >
-                  <div className="profile-chip-copy">
-                    <div className="profile-chip-label">{displayName}</div>
-                    <div className="helper-text">{title}</div>
-                  </div>
-                  <div className="profile-avatar">{initials}</div>
-                </button>
-
-                {isProfileMenuOpen ? (
-                  <div aria-label="Patient account menu" className="profile-dropdown">
-                    <div className="profile-dropdown-head">
-                      <div className="profile-avatar profile-dropdown-avatar">{initials}</div>
-                      <div className="profile-dropdown-copy">
-                        <strong>{displayName}</strong>
-                        <span className="helper-text">{title}</span>
-                      </div>
-                    </div>
-
-                    <div className="profile-dropdown-meta">
-                      <div className="profile-dropdown-row">
-                        <AppIcon name="shield" size={16} />
-                        <span>Secure patient portal access</span>
-                      </div>
-                      {patientId ? (
-                        <div className="profile-dropdown-row">
-                          <AppIcon name="users" size={16} />
-                          <span>Patient ID {patientId}</span>
-                        </div>
-                      ) : null}
-                      {emailAddress ? (
-                        <div className="profile-dropdown-row">
-                          <AppIcon name="info" size={16} />
-                          <span>{emailAddress}</span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="profile-dropdown-actions">
-                      <Link
-                        className="button-secondary profile-dropdown-button"
-                        onClick={() => setIsProfileMenuOpen(false)}
-                        to="/patient/profile"
-                      >
-                        <AppIcon name="users" size={16} />
-                        View Details
-                      </Link>
-                      <button className="button-ghost profile-dropdown-button" onClick={handleLogout} type="button">
-                        <AppIcon name="logout" size={16} />
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="patient-topbar-theme">
-              <DarkModeToggle />
-            </div>
-          </>
         )}
 
-        {!isPatientPortal ? (
-          <div className="profile-chip">
-            <div>
-              <div style={{ fontWeight: 700 }}>{displayName}</div>
+        <div className={`profile-menu ${isProfileMenuOpen ? 'is-open' : ''}`.trim()} ref={profileMenuRef}>
+          <button
+            aria-expanded={isProfileMenuOpen}
+            aria-haspopup="dialog"
+            className="profile-chip profile-chip-button"
+            onClick={() => setIsProfileMenuOpen((current) => !current)}
+            type="button"
+          >
+            <div className="profile-chip-copy">
+              <div className="profile-chip-label">{displayName}</div>
               <div className="helper-text">{title}</div>
             </div>
             <div className="profile-avatar">{initials}</div>
+          </button>
+
+          {isProfileMenuOpen ? (
+            <div aria-label="User account menu" className="profile-dropdown">
+              <div className="profile-dropdown-head">
+                <div className="profile-avatar profile-dropdown-avatar">{initials}</div>
+                <div className="profile-dropdown-copy">
+                  <strong>{displayName}</strong>
+                  <span className="helper-text">{title}</span>
+                </div>
+              </div>
+
+              <div className="profile-dropdown-meta">
+                <div className="profile-dropdown-row">
+                  <AppIcon name="shield" size={16} />
+                  <span>Secure {role.toLowerCase()} access</span>
+                </div>
+                {patientId ? (
+                  <div className="profile-dropdown-row">
+                    <AppIcon name="users" size={16} />
+                    <span>Patient ID {patientId}</span>
+                  </div>
+                ) : null}
+                {emailAddress ? (
+                  <div className="profile-dropdown-row">
+                    <AppIcon name="info" size={16} />
+                    <span>{emailAddress}</span>
+                  </div>
+                ) : null}
+                {lastLoginAt ? (
+                  <div className="profile-dropdown-row">
+                    <AppIcon name="history" size={16} />
+                    <span>
+                      Signed in at {new Date(lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="profile-dropdown-actions">
+                <Link
+                  className="button-secondary profile-dropdown-button"
+                  onClick={() => setIsProfileMenuOpen(false)}
+                  to={role === ROLES.PATIENT ? '/patient/profile' : '/change-password'}
+                >
+                  <AppIcon name={role === ROLES.PATIENT ? 'users' : 'shield'} size={16} />
+                  {role === ROLES.PATIENT ? 'View Details' : 'Security Settings'}
+                </Link>
+                <button className="button-ghost profile-dropdown-button" onClick={handleLogout} type="button">
+                  <AppIcon name="logout" size={16} />
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {isPatientPortal && (
+          <div className="patient-topbar-theme">
+            <DarkModeToggle />
           </div>
-        ) : null}
+        )}
       </div>
     </header>
   );

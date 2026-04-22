@@ -6,6 +6,7 @@ const TOKEN_KEY = 'pims_token';
 const ROLE_KEY = 'pims_role';
 const USER_KEY = 'pims_user';
 const REMEMBER_KEY = 'pims_remember';
+const LOGIN_TIME_KEY = 'pims_login_at';
 
 function parseStoredJson(key) {
   const value = localStorage.getItem(key);
@@ -23,6 +24,10 @@ function parseStoredJson(key) {
 
 export function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getStoredLoginTime() {
+  return localStorage.getItem(LOGIN_TIME_KEY);
 }
 
 export function getStoredUser() {
@@ -99,6 +104,8 @@ export function setAuthSession({ token, user, rememberDevice = false }) {
     }
   }
 
+  localStorage.setItem(LOGIN_TIME_KEY, new Date().toISOString());
+
   if (rememberDevice) {
     localStorage.setItem(REMEMBER_KEY, 'true');
   } else {
@@ -124,4 +131,5 @@ export function clearSession() {
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(REMEMBER_KEY);
+  localStorage.removeItem(LOGIN_TIME_KEY);
 }

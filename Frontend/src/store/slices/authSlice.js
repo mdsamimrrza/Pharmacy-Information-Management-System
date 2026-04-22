@@ -5,6 +5,7 @@ import {
   getStoredRole,
   getStoredToken,
   getStoredUser,
+  getStoredLoginTime,
   isValidRole,
   updateStoredUser
 } from '../../utils/session';
@@ -19,6 +20,7 @@ function getInitialState() {
     token: token || '',
     user: user || null,
     role: isValidRole(role) ? role : getStoredRole(),
+    lastLoginAt: getStoredLoginTime() || '',
     errorMessage: ''
   };
 }
@@ -40,10 +42,10 @@ export const hydrateAuthSession = createAsyncThunk(
         updateStoredUser(user);
       }
 
-      return {
         token,
         user,
-        role: user?.role || getStoredRole()
+        role: user?.role || getStoredRole(),
+        lastLoginAt: getStoredLoginTime() || new Date().toISOString()
       };
     } catch (error) {
       clearSession();
@@ -74,6 +76,7 @@ const authSlice = createSlice({
       state.token = token;
       state.user = user;
       state.role = isValidRole(role) ? role : getStoredRole();
+      state.lastLoginAt = getStoredLoginTime() || new Date().toISOString();
       state.errorMessage = '';
     },
     clearAuthState(state) {
@@ -109,6 +112,7 @@ const authSlice = createSlice({
         state.token = token;
         state.user = user;
         state.role = role;
+        state.lastLoginAt = action.payload?.lastLoginAt || getStoredLoginTime() || '';
         state.errorMessage = '';
       })
       .addCase(hydrateAuthSession.rejected, (state, action) => {
