@@ -1,4 +1,4 @@
-![alt text](image.png)# 🏥 PIMS — Pharmacy Information Management System
+# 🏥 PIMS — Pharmacy Information Management System
 
 > A production-grade, full-stack web application for managing prescriptions, patients, inventory, and pharmacy workflows. Built as a multi-role platform serving Doctors, Pharmacists, Administrators, and Patients.
 
