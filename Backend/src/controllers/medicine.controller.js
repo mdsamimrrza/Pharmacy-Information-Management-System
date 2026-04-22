@@ -1,5 +1,4 @@
-import { createMedicine, getMedicineById, listMedicines, updateMedicine } from '../services/medicine.service.js'
-import { removeMedicine } from '../services/medicine.service.js'
+import { createMedicine, getMedicineById, listMedicines, updateMedicine, checkDrugInteractions, removeMedicine } from '../services/medicine.service.js'
 import { sendError, sendSuccess } from '../utils/responseHandler.js'
 
 export const getAllMedicines = async (_req, res) => {
@@ -50,5 +49,20 @@ export const removeExistingMedicine = async (req, res) => {
     return sendSuccess(res, { medicine }, 'Medicine deleted')
   } catch (error) {
     return sendError(res, error.message || 'Failed to delete medicine', error.statusCode || 500)
+  }
+}
+
+export const checkInteractions = async (req, res) => {
+  try {
+    const { newDrugAtc, existingAtcCodes } = req.body || {}
+    
+    if (!newDrugAtc) {
+      return sendError(res, 'newDrugAtc is required', 400)
+    }
+
+    const result = await checkDrugInteractions(newDrugAtc, existingAtcCodes || [])
+    return sendSuccess(res, result, 'Drug interactions checked')
+  } catch (error) {
+    return sendError(res, error.message || 'Failed to check drug interactions', error.statusCode || 500)
   }
 }

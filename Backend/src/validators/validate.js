@@ -27,6 +27,31 @@ export const requireNonEmptyString = (errors, field, value) => {
   }
 }
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+
+export const requireStrongPassword = (errors, field, value) => {
+  requireNonEmptyString(errors, field, value)
+
+  if (isProvided(value) && String(value).trim() && !PASSWORD_REGEX.test(String(value).trim())) {
+    addError(errors, field, `${field} must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character`)
+  }
+}
+
+export const optionalStrongPassword = (errors, field, value) => {
+  if (!isProvided(value)) {
+    return
+  }
+
+  if (typeof value !== 'string') {
+    addError(errors, field, `${field} must be a string`)
+    return
+  }
+
+  if (String(value).trim() && !PASSWORD_REGEX.test(String(value).trim())) {
+    addError(errors, field, `${field} must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character`)
+  }
+}
+
 export const optionalString = (errors, field, value) => {
   if (isProvided(value) && typeof value !== 'string') {
     addError(errors, field, `${field} must be a string`)

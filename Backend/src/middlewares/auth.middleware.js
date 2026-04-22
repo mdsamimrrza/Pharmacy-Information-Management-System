@@ -1,6 +1,7 @@
 import User from '../models/User.model.js'
 import { sendError } from '../utils/responseHandler.js'
 import { verifyToken as verifySignedToken } from '../utils/jwt.js'
+import BlacklistedToken from '../models/BlacklistedToken.model.js'
 
 export const verifyToken = async (req, res, next) => {
   try {
@@ -9,6 +10,11 @@ export const verifyToken = async (req, res, next) => {
 
     if (!token) {
       return sendError(res, 'Unauthorised', 401)
+    }
+
+    const isBlacklisted = await BlacklistedToken.exists({ token })
+    if (isBlacklisted) {
+      return sendError(res, 'Token expired', 401)
     }
 
     const payload = verifySignedToken(token)

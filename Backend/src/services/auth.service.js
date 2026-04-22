@@ -43,9 +43,18 @@ export const authenticateUser = async ({ email, password, role }) => {
     throw authError('Invalid email or password')
   }
 
+  if (user.lockUntil && user.lockUntil > new Date()) {
+    throw authError('Account temporarily locked due to too many failed login attempts. Please try again later.', 403)
+  }
+
   const passwordMatches = verifyPassword(password, user.passwordHash)
 
   if (!passwordMatches) {
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1
+    if (user.failedLoginAttempts >= 5) {
+      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
+    }
+    await user.save()
     throw authError('Invalid email or password')
   }
 
@@ -53,6 +62,8 @@ export const authenticateUser = async ({ email, password, role }) => {
     throw authError('Role mismatch', 403)
   }
 
+  user.failedLoginAttempts = 0
+  user.lockUntil = null
   user.lastLogin = new Date()
   await user.save()
 

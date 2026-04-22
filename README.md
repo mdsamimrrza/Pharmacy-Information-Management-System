@@ -42,6 +42,7 @@ and inventory using the **WHO ATC (Anatomical Therapeutic Chemical)** classifica
 - **Doctor** — creates patient profiles, generates ATC-based prescriptions, views history
 - **Pharmacist** — manages drug inventory, monitors stock and expiry, dispenses prescriptions
 - **Admin** — manages users, assigns roles, monitors audit logs and system health
+- **Patient** — views own prescriptions, medical history, and profile
 
 **Core user journey:**
 
@@ -112,10 +113,9 @@ No mobile app. No desktop app. Web only.
 | React Router DOM | ^6.x    | Client-side routing and protected routes                    |
 | Axios            | ^1.x    | HTTP client for API calls to Express backend                |
 | React Hook Form  | ^7.x    | Form state management and validation                        |
-| Recharts         | ^2.x    | Charts for Reports page (line chart, bar chart)             |
-| Context API      | built-in| Auth state (user, role, token) — no Redux needed            |
+| Redux Toolkit    | ^2.x    | Global state management                                     |
+| Context API      | built-in| Auth state (user, role, token)                              |
 
-> **No Redux.** React Context API is sufficient for this project scope.
 > **No Ant Design / MUI.** All UI built purely with Tailwind CSS utility classes.
 
 ### Backend
@@ -128,7 +128,7 @@ No mobile app. No desktop app. Web only.
 | Mongoose          | ^8.x     | MongoDB ODM — schemas, models, queries            |
 | jsonwebtoken      | ^9.x     | JWT token generation and verification             |
 | bcryptjs          | ^2.x     | Password hashing                                  |
-| Puppeteer         | ^22.x    | Headless Chrome — generates PDF prescriptions     |
+| pdfkit            | ^0.x     | Generates PDF prescriptions natively without headless Chrome |
 | Nodemailer        | ^6.x     | Sends Rx email to pharmacy                        |
 | node-cron         | ^3.x     | Scheduled jobs — expiry + low stock checks        |
 | cors              | ^2.x     | Cross-Origin Resource Sharing                     |
@@ -463,7 +463,7 @@ HTTP Request
   lastName:     String,   required,
   email:        String,   required, unique,
   passwordHash: String,   required,          // bcrypt — never store plain text
-  role:         String,   enum: ['DOCTOR', 'PHARMACIST', 'ADMIN'],
+  role:         String,   enum: ['DOCTOR', 'PHARMACIST', 'ADMIN', 'PATIENT'],
   isActive:     Boolean,  default: true,
   lastLogin:    Date,
   createdAt:    Date,     default: Date.now
@@ -753,25 +753,21 @@ lowStockCheck.job.js —  cron "0 */6 * * *"  (every 6 hours)
   → createAlert({ type: 'LOW_STOCK', severity: 'CRITICAL' })
 ```
 
-### PDF Generation (Puppeteer)
+### PDF Generation (PDFKit)
 
 ```
 GET /api/prescriptions/:id/pdf
 
 1. Fetch Rx, populate patient and doctor
-2. Build HTML string with:
+2. Build PDF Document using pdfkit:
      - Doctor letterhead (name, qualification, hospital, registration)
      - Patient info (name, age, weight, diagnosis)
      - Rx table (medicine name, ATC code, dose, frequency, duration)
      - Digital signature block and barcode
-3. Puppeteer:
-     const browser = await puppeteer.launch()
-     const page    = await browser.newPage()
-     await page.setContent(html)
-     const pdf = await page.pdf({ format: 'A4' })
-     await browser.close()
-4. res.set('Content-Type', 'application/pdf')
-   res.send(pdf)
+3. PDFKit streams directly to response:
+     res.set('Content-Type', 'application/pdf')
+     doc.pipe(res)
+     doc.end()
 ```
 
 ### Drug Interaction Check

@@ -4,6 +4,7 @@ import {
   optionalEnum,
   requireEmail,
   requireNonEmptyString,
+  requireStrongPassword,
   optionalString,
 } from './validate.js'
 
@@ -26,7 +27,7 @@ export const validateSetupAdmin = createValidator((req) => {
   requireNonEmptyString(errors, 'firstName', body.firstName)
   requireNonEmptyString(errors, 'lastName', body.lastName)
   requireEmail(errors, 'email', body.email)
-  requireNonEmptyString(errors, 'password', body.password)
+  requireStrongPassword(errors, 'password', body.password)
   optionalString(errors, 'confirmPassword', body.confirmPassword)
 
   if (body.confirmPassword !== undefined && body.password !== body.confirmPassword) {
@@ -48,7 +49,7 @@ export const validateResetPassword = createValidator((req) => {
 
   requireEmail(errors, 'email', body.email)
   requireNonEmptyString(errors, 'token', body.token)
-  requireNonEmptyString(errors, 'newPassword', body.newPassword)
+  requireStrongPassword(errors, 'newPassword', body.newPassword)
   requireNonEmptyString(errors, 'confirmPassword', body.confirmPassword)
 
   if (body.newPassword !== body.confirmPassword) {
@@ -63,7 +64,7 @@ export const validateChangePassword = createValidator((req) => {
   const body = req.body || {}
 
   requireNonEmptyString(errors, 'currentPassword', body.currentPassword)
-  requireNonEmptyString(errors, 'newPassword', body.newPassword)
+  requireStrongPassword(errors, 'newPassword', body.newPassword)
   requireNonEmptyString(errors, 'confirmPassword', body.confirmPassword)
 
   if (body.newPassword !== body.confirmPassword) {

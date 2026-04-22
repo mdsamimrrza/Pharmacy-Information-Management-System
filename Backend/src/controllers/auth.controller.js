@@ -7,6 +7,7 @@ import {
   setupFirstAdmin,
 } from '../services/auth.service.js'
 import { sendError, sendSuccess } from '../utils/responseHandler.js'
+import BlacklistedToken from '../models/BlacklistedToken.model.js'
 
 export const login = async (req, res) => {
   try {
@@ -100,6 +101,25 @@ export const getMe = async (req, res) => {
   }
 }
 
-export const logout = (_req, res) => {
-  return sendSuccess(res, { loggedOut: true }, 'Logged out')
+export const logout = async (req, res) => {
+  try {
+    const header = req.headers.authorization || ''
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null
+
+    if (token) {
+      // The token exp is accessible if we decode it, but we can just set a fixed expiry for the document 
+      // or rely on the JWT itself expiring. Let's set the document to expire in 7 days (JWT_EXPIRES_IN default)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      
+      await BlacklistedToken.create({
+        token,
+        expiresAt
+      })
+    }
+    
+    return sendSuccess(res, { loggedOut: true }, 'Logged out successfully')
+  } catch (error) {
+    // Even if blacklist fails, return success to the client so they can clear local state
+    return sendSuccess(res, { loggedOut: true }, 'Logged out locally')
+  }
 }

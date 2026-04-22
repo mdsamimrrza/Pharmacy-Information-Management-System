@@ -6,9 +6,11 @@ import {
   optionalEnum,
   optionalObjectId,
   optionalString,
+  optionalStrongPassword,
   requireAtLeastOneOf,
   requireEmail,
   requireNonEmptyString,
+  requireStrongPassword,
   requireObjectId,
   optionalNumberRange,
 } from './validate.js'
@@ -40,7 +42,7 @@ export const validateCreateUser = createValidator((req) => {
   requireNonEmptyString(errors, 'firstName', body.firstName)
   requireNonEmptyString(errors, 'lastName', body.lastName)
   requireEmail(errors, 'email', body.email)
-  requireNonEmptyString(errors, 'password', body.password)
+  requireStrongPassword(errors, 'password', body.password)
   optionalBoolean(errors, 'isActive', body.isActive)
   optionalObjectId(errors, 'managerId', body.managerId)
   optionalString(errors, 'firstName', body.firstName)
@@ -63,7 +65,7 @@ export const validateUpdateUser = createValidator((req) => {
   optionalString(errors, 'firstName', body.firstName)
   optionalString(errors, 'lastName', body.lastName)
   optionalEmail(errors, 'email', body.email)
-  optionalString(errors, 'password', body.password)
+  optionalStrongPassword(errors, 'password', body.password)
   optionalEnum(errors, 'role', body.role, Object.values(ROLES))
   optionalBoolean(errors, 'isActive', body.isActive)
 
