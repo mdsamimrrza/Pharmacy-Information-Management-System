@@ -111,7 +111,7 @@ export default function Login({ forcedRole = null, showRolePicker = true, pageTi
       <section className="login-card">
         <div className="login-brand">
           <span className="brand-mark">
-            <AppIcon name={ROLE_ICON[activeRole] || 'brand'} size={28} />
+            <AppIcon name={ROLE_ICON[activeRole] || 'brand'} size={22} />
           </span>
           <strong>
             {isValidRole(forcedRole) ? `${ROLE_LABELS[activeRole]} Access` : 'PIMS'}
@@ -154,7 +154,7 @@ export default function Login({ forcedRole = null, showRolePicker = true, pageTi
           <label className="field-label">
             <span>Work Email</span>
             <div className="search-field">
-              <AppIcon name="users" size={18} />
+              <AppIcon name="users" size={16} />
               <input
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={isValidRole(forcedRole) && activeRole === ROLES.PATIENT ? 'patient@example.com' : undefined}
@@ -170,7 +170,7 @@ export default function Login({ forcedRole = null, showRolePicker = true, pageTi
               <Link className="helper-text" to="/forgot-password">Forgot password?</Link>
             </div>
             <div className="search-field">
-              <AppIcon name="shield" size={18} />
+              <AppIcon name="shield" size={16} />
               <input onChange={(event) => setPassword(event.target.value)} type="password" value={password} />
             </div>
           </label>
@@ -213,10 +213,6 @@ export default function Login({ forcedRole = null, showRolePicker = true, pageTi
           <span className="badge">
             <AppIcon name="doctor" size={14} />
             doctor@pims.com / test123
-          </span>
-          <span className="badge">
-            <AppIcon name="users" size={14} />
-            Patient accounts use staff-issued email credentials
           </span>
         </div>
       </section>

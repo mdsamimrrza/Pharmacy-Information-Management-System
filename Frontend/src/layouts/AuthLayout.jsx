@@ -12,13 +12,8 @@ export default function AuthLayout({ children }) {
         </Link>
       </div>
       <main className="login-page">{children}</main>
-      <footer className="auth-footer">
-        <span>(c) 2026 PIMS Medical Informatics Inc. | System status: Operational</span>
-        <div className="auth-footer-links">
-          <span>Privacy Policy</span>
-          <span>Security Audit</span>
-          <span>Language: EN (US)</span>
-        </div>
+      <footer className="auth-footer" style={{ justifyContent: 'center' }}>
+        <span>&copy; 2026 PIMS Medical Informatics Inc. | Operational</span>
       </footer>
     </div>
   );
