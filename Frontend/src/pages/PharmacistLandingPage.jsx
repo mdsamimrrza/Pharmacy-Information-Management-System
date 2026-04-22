@@ -29,10 +29,10 @@ export default function PharmacistLandingPage() {
 
           <div className="pharmacist-hero-actions">
             <Link className="button-primary login-submit" to="/pharmacist/login">
-              Sign up - Pharmacist
+              Enter Pharmacist Portal
             </Link>
-            <Link to="/doctor/access" className="button-ghost">Connect to Doctor</Link>
-            <span className="helper-text">Login (existing users)</span>
+            <Link className="button-ghost" to="/doctor/access">Doctor Access</Link>
+            <span className="helper-text">Use your existing credentials to continue.</span>
           </div>
         </section>
 
@@ -106,7 +106,7 @@ export default function PharmacistLandingPage() {
       </footer>
 
       <div className="pharmacist-landing-copyright helper-text">
-        © 2026 RxConnect. All rights reserved. Professional Prescription Wireframe System.
+        (c) 2026 RxConnect. Secure clinical coordination platform.
       </div>
     </div>
   );

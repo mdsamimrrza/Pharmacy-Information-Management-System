@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 import StatCard from '../components/StatCard';
 import { getApiMessage, listMedicines, listPatients, listPrescriptions } from '../api/pimsApi';
@@ -26,7 +26,50 @@ function isSameDay(dateValue) {
   return today.toDateString() === date.toDateString();
 }
 
+function formatDate(value) {
+  if (!value) {
+    return 'Not available';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Not available';
+  }
+
+  return parsed.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+function getAgeFromDob(value) {
+  if (!value) {
+    return 'Not available';
+  }
+
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) {
+    return 'Not available';
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthOffset = today.getMonth() - dob.getMonth();
+
+  if (monthOffset < 0 || (monthOffset === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+
+  return `${age} years`;
+}
+
+function getMedicationName(item) {
+  return item?.medicineId?.name || item?.medicineId?.genericName || item?.atcCode || 'Medication';
+}
+
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
   const [patientName, setPatientName] = useState('');
   const [medicineQuery, setMedicineQuery] = useState('');
@@ -149,8 +192,12 @@ export default function Dashboard() {
     };
   }, [debouncedMedicineQuery]);
 
-  const matchedPatient = patientMatches[0] || null;
   const recentSearchTags = useMemo(() => QUICK_SEARCH_TAGS, []);
+  const patientResultCount = patientMatches.length;
+
+  const handleSelectPatient = (patientRecord) => {
+    navigate(`/patients/${patientRecord._id}/details`, { state: { patient: patientRecord } });
+  };
 
   return (
     <section className="page">
@@ -191,11 +238,16 @@ export default function Dashboard() {
         </section>
 
         <section className="panel">
-          <div className="section-title">
-            <AppIcon name="users" size={20} />
-            <h3>Patient Lookup</h3>
+          <div className="patient-lookup-header">
+            <div className="section-title">
+              <AppIcon name="users" size={20} />
+              <h3>Patient Lookup</h3>
+            </div>
+            {debouncedPatientQuery ? (
+              <span className="patient-lookup-count">{patientResultCount} match{patientResultCount === 1 ? '' : 'es'}</span>
+            ) : null}
           </div>
-          <p className="helper-text">Search records by ID or patient name.</p>
+          <p className="helper-text">Search by patient ID or name, then open the full record page.</p>
 
           <div className="field-grid">
             <label className="field-label">
@@ -216,20 +268,31 @@ export default function Dashboard() {
             </label>
           </div>
 
-          <div style={{ marginTop: '1rem' }}>
-            {matchedPatient ? (
-              <div className="lookup-result">
-                <strong>{matchedPatient.name}</strong>
-                <div className="helper-text">
-                  {matchedPatient.patientId} · {matchedPatient.gender} · DOB {new Date(matchedPatient.dob).toLocaleDateString()}
-                </div>
-                <div className="pill-row">
-                  {(matchedPatient.allergies || []).length ? matchedPatient.allergies.map((entry) => (
-                    <span className="pill" key={`${matchedPatient.id}-${entry.substance}`}>
-                      {entry.substance} ({entry.severity})
-                    </span>
-                  )) : <span className="pill">No allergies recorded</span>}
-                </div>
+          <div className="patient-lookup-results">
+            {patientMatches.length ? (
+              <div className="lookup-result-list">
+                {patientMatches.map((patientRecord) => {
+                  return (
+                    <button
+                      className="lookup-result lookup-result-action"
+                      key={patientRecord._id}
+                      onClick={() => handleSelectPatient(patientRecord)}
+                      type="button"
+                    >
+                      <strong>{patientRecord.name}</strong>
+                      <div className="helper-text">
+                        {patientRecord.patientId} · {patientRecord.gender} · DOB {formatDate(patientRecord.dob)}
+                      </div>
+                      <div className="pill-row">
+                        {(patientRecord.allergies || []).length ? patientRecord.allergies.map((entry) => (
+                          <span className="pill" key={`${patientRecord._id}-${entry.substance}`}>
+                            {entry.substance} ({entry.severity})
+                          </span>
+                        )) : <span className="pill">No allergies recorded</span>}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="helper-text">

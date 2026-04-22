@@ -1,5 +1,6 @@
 import {
   createValidator,
+  optionalBooleanQuery,
   optionalEnum,
   optionalNonNegativeNumber,
   optionalObjectId,
@@ -22,6 +23,7 @@ export const validateMedicineQuery = createValidator((req) => {
   const query = req.query || {}
   optionalString(errors, 'q', query.q)
   optionalString(errors, 'atcCode', query.atcCode)
+  optionalBooleanQuery(errors, 'includeDescendants', query.includeDescendants)
   optionalObjectId(errors, 'medicineId', query.medicineId)
   optionalNonNegativeNumber(errors, 'page', query.page)
   optionalNonNegativeNumber(errors, 'limit', query.limit)

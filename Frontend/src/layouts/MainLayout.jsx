@@ -127,7 +127,7 @@ export default function MainLayout({ children }) {
 
         <nav aria-label="Primary navigation" className="sidebar-nav">
           {navigation.map((item) => (
-            <NavLink key={item.to} className={navLinkClass} onClick={closeMobileSidebar} to={item.to}>
+            <NavLink end key={item.to} className={navLinkClass} onClick={closeMobileSidebar} to={item.to}>
               <AppIcon name={item.icon} size={18} />
               <span>{item.label}</span>
             </NavLink>
@@ -152,7 +152,7 @@ export default function MainLayout({ children }) {
         <Topbar isSidebarOpen={isSidebarOpen} onMenuToggle={toggleSidebar} showMenuToggle />
         <main className="page-content">{children}</main>
         <footer className="app-footer">
-          <span>© 2026 PIMS · Pharmacy Information Management System · Integration pass</span>
+          <span>(c) 2026 PIMS | Pharmacy Information Management System | Connected workspace</span>
           <span>Last sync: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </footer>
       </section>

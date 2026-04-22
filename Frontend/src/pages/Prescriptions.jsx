@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 import {
   downloadPrescriptionPdf,
@@ -38,10 +39,27 @@ function isSelectionKey(event) {
   return event.key === 'Enter' || event.key === ' ';
 }
 
+function getPatientRef(record) {
+  const value = record?.patientId;
+
+  if (!value) {
+    return { id: '', patient: null };
+  }
+
+  if (typeof value === 'string') {
+    return { id: value, patient: null };
+  }
+
+  const id = value._id || value.id || '';
+  return { id, patient: value };
+}
+
 export default function Prescriptions() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const role = getStoredRole();
   const isPharmacist = role === ROLES.PHARMACIST;
+  const canViewPatientRecord = role === ROLES.DOCTOR || role === ROLES.ADMIN;
   const records = useSelector((state) => state.prescriptions.items);
   const pagination = useSelector((state) => state.prescriptions.pagination);
   const selectedRecord = useSelector((state) => state.prescriptions.selected);
@@ -152,6 +170,22 @@ export default function Prescriptions() {
     }
   };
 
+  const handleViewPatient = (record) => {
+    const { id, patient } = getPatientRef(record);
+
+    if (!canViewPatientRecord) {
+      notifyError('Access denied', 'Only doctor/admin roles can open patient records from this page.');
+      return;
+    }
+
+    if (!id) {
+      notifyError('Patient link unavailable', 'This prescription row does not include a patient record reference.');
+      return;
+    }
+
+    navigate(`/patients/${id}/details`, patient ? { state: { patient } } : undefined);
+  };
+
   return (
     <section className="page">
       {errorMessage ? (
@@ -245,7 +279,6 @@ export default function Prescriptions() {
               >
                 Print PDF
               </button>
-              <button aria-label="Share selected prescription with pharmacy" className="button-primary" disabled={!selectedRecord || isUpdating} type="button">Share with Pharmacy</button>
             </div>
           </div>
 
@@ -260,10 +293,15 @@ export default function Prescriptions() {
                   <th>Issued</th>
                   <th>Status</th>
                   <th>Priority</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedRecords.map((record) => (
+                  (() => {
+                    const patientRef = getPatientRef(record);
+
+                    return (
                   <tr
                     aria-selected={selectedId === record._id}
                     key={record._id}
@@ -283,11 +321,26 @@ export default function Prescriptions() {
                     <td>{new Date(record.createdAt).toLocaleDateString()}</td>
                     <td><span className={statusClass(record.status)}>{record.status}</span></td>
                     <td>{record.isUrgent ? 'STAT' : 'Normal'}</td>
+                    <td>
+                      <button
+                        className="button-ghost"
+                        disabled={!canViewPatientRecord || !patientRef.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleViewPatient(record);
+                        }}
+                        type="button"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
+                    );
+                  })()
                 ))}
                 {!isLoading && !sortedRecords.length ? (
                   <tr>
-                    <td className="helper-text" colSpan="6">No prescriptions match the current filters.</td>
+                    <td className="helper-text" colSpan="7">No prescriptions match the current filters.</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -315,55 +368,108 @@ export default function Prescriptions() {
         </section>
 
         <aside className="detail-side-panel">
-          <section className="panel">
+          <section className="panel" style={{ borderBottom: '2px solid rgba(15,118,110,0.18)' }}>
             <div className="section-title">
-              <AppIcon name="note" size={20} />
-              <h3>Prescription Details</h3>
+              <AppIcon name="note" size={18} />
+              <h3 style={{ margin: 0 }}>Prescription Details</h3>
             </div>
+          </section>
 
+          <section className="panel">
             {selectedRecord ? (
               <div className="stack">
-                <div>
-                  <div className="caption">Patient Information</div>
-                  <strong>{selectedRecord.patientId?.name || 'Unknown patient'}</strong>
-                  <div className="helper-text">{selectedRecord.patientId?.patientId || 'No patient ID'}</div>
+
+                {/* Rx Meta Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                  <div style={{ padding: '0.6rem 0.75rem', background: 'var(--surface-muted)', borderRadius: '8px', borderLeft: '2px solid #14b8a6' }}>
+                    <div className="caption">Rx ID</div>
+                    <strong style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{selectedRecord.rxId || '—'}</strong>
+                  </div>
+                  <div style={{ padding: '0.6rem 0.75rem', background: 'var(--surface-muted)', borderRadius: '8px', borderLeft: '2px solid var(--line-strong)' }}>
+                    <div className="caption">Issued</div>
+                    <strong style={{ fontSize: '0.83rem' }}>{selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</strong>
+                  </div>
                 </div>
-                <div>
-                  <div className="caption">Medication</div>
-                  <strong>{selectedRecord.items?.[0]?.medicineId?.name || selectedRecord.items?.[0]?.atcCode || 'N/A'}</strong>
-                  <div className="helper-text">ATC {selectedRecord.items?.[0]?.atcCode || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="caption">Status</div>
+
+                {/* Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <span className={statusClass(selectedRecord.status)}>{selectedRecord.status}</span>
+                  {selectedRecord.isUrgent && <span className="status-pill status-critical">URGENT</span>}
                 </div>
+
+                {/* Patient */}
+                <div style={{ padding: '0.8rem', background: 'var(--surface-muted)', borderRadius: '10px', display: 'grid', gap: '0.15rem' }}>
+                  <div className="caption" style={{ color: 'var(--accent-strong)' }}>Patient</div>
+                  <strong style={{ fontSize: '0.95rem' }}>{selectedRecord.patientId?.name || 'Unknown patient'}</strong>
+                  <div className="helper-text" style={{ fontFamily: 'monospace', fontSize: '0.81rem' }}>{selectedRecord.patientId?.patientId || 'No patient ID'}</div>
+                </div>
+
+                {/* Diagnosis */}
                 <div>
                   <div className="caption">Diagnosis</div>
-                  <div className="helper-text">{selectedRecord.diagnosis || 'No diagnosis supplied.'}</div>
+                  <div style={{ color: 'var(--text)', fontSize: '0.9rem', lineHeight: 1.5, marginTop: '0.1rem' }}>{selectedRecord.diagnosis || 'Not specified'}</div>
                 </div>
+
+                {/* Doctor */}
+                {selectedRecord.doctorId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(15,118,110,0.12)', border: '1px solid rgba(15,118,110,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700, flexShrink: 0 }}>
+                      {(selectedRecord.doctorId.firstName?.[0] || '') + (selectedRecord.doctorId.lastName?.[0] || '')}
+                    </div>
+                    <div>
+                      <div className="caption">Prescribing Doctor</div>
+                      <div style={{ fontSize: '0.88rem' }}>Dr. {[selectedRecord.doctorId.firstName, selectedRecord.doctorId.lastName].filter(Boolean).join(' ') || '—'}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sig */}
                 <div>
                   <div className="caption">Digital Signature</div>
-                  <div className="helper-text">{selectedRecord.digitalSignature || 'Generated by backend'}</div>
+                  <div className="helper-text" style={{ fontFamily: 'monospace', fontSize: '0.79rem' }}>{selectedRecord.digitalSignature || 'Auto-generated'}</div>
                 </div>
+
+                {/* Items */}
                 <div>
-                  <div className="caption">Items</div>
-                  <div className="mini-list">
-                    {(selectedRecord.items || []).map((item) => (
-                      <div className="mini-list-item" key={`${selectedRecord._id}-${item.atcCode}`}>
-                        <div>
-                          <strong>{item.medicineId?.name || item.atcCode}</strong>
-                          <div className="helper-text">
-                            {item.dose} · {item.frequency} · {item.route} · {item.durationDays} days
-                          </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+                    <div className="caption">Medications</div>
+                    <span style={{ fontWeight: 600, color: 'var(--accent-strong)', fontSize: '0.8rem' }}>
+                      ×{(selectedRecord.items || []).length}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.45rem' }}>
+                    {(selectedRecord.items || []).map((item, idx) => (
+                      <div
+                        key={`${selectedRecord._id}-${item.atcCode}-${idx}`}
+                        style={{
+                          padding: '0.65rem 0.8rem',
+                          background: 'var(--surface-muted)',
+                          borderRadius: '10px',
+                          borderLeft: '2px solid #14b8a6',
+                          display: 'grid',
+                          gap: '0.2rem'
+                        }}
+                      >
+                        <strong style={{ fontSize: '0.88rem' }}>{item.medicineId?.name || item.atcCode}</strong>
+                        <div className="helper-text" style={{ fontSize: '0.81rem' }}>
+                          {[item.dose, item.frequency, item.route, item.durationDays ? `${item.durationDays}d` : null].filter(Boolean).join(' · ')}
                         </div>
+                        {item.instructions && (
+                          <div style={{ fontSize: '0.79rem', color: '#d97706', marginTop: '0.1rem' }}>
+                            ⚠ {item.instructions}
+                          </div>
+                        )}
+
                       </div>
                     ))}
                   </div>
                 </div>
+
               </div>
             ) : (
-              <div className="helper-text">Select a prescription to view details.</div>
+              <div className="helper-text" style={{ padding: '1rem 0' }}>Select a prescription to view details.</div>
             )}
+
           </section>
 
           {isPharmacist && selectedRecord ? (

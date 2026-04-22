@@ -29,9 +29,9 @@ export default function PatientLandingPage() {
 
           <div className="patient-hero-actions">
             <Link className="button-primary login-submit" to="/patient/login">
-              Sign up - Patient
+              Enter Patient Portal
             </Link>
-            <span className="helper-text">Login (existing users)</span>
+            <span className="helper-text">Use the email shared by your care team to continue.</span>
           </div>
         </section>
 
@@ -104,7 +104,7 @@ export default function PatientLandingPage() {
       </footer>
 
       <div className="patient-landing-copyright helper-text">
-        © 2026 RxConnect. All rights reserved. Professional Prescription Wireframe System.
+        (c) 2026 RxConnect. Secure clinical coordination platform.
       </div>
     </div>
   );

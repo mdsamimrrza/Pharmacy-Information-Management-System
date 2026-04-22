@@ -250,7 +250,7 @@ export const syncInventoryAlertsForItem = createAlertFromInventoryItem
 export const getInventoryRiskSummary = getInventoryRiskFlags
 
 const populateInventoryQuery = (query) =>
-  query.populate('medicineId', 'name genericName brand atcCode strength dosageForm manufacturer')
+  query.populate('medicineId', 'name genericName brand atcCode strength dosageForm manufacturer mrp')
 
 const buildInventoryQuery = (filters = {}) => {
   const query = {}

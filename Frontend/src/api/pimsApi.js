@@ -82,6 +82,10 @@ export async function listPatients(params) {
   return unwrap(await apiClient.get('/patients', { params }));
 }
 
+export async function getPatientById(id) {
+  return unwrap(await apiClient.get(`/patients/${id}`));
+}
+
 export async function createPatient(payload) {
   return unwrap(await apiClient.post('/patients', payload));
 }

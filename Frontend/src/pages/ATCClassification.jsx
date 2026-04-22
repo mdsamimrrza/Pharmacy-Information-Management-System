@@ -10,16 +10,7 @@ import {
 import useDebouncedValue from '../hooks/useDebouncedValue';
 
 function findFirstNode(nodes) {
-  if (!nodes?.length) {
-    return null;
-  }
-
-  const [first] = nodes;
-  if (first.children?.length) {
-    return findFirstNode(first.children);
-  }
-
-  return first;
+  return nodes?.[0] || null;
 }
 
 function findPath(nodes, targetCode, trail = []) {
@@ -50,25 +41,29 @@ function dosageClass(form) {
   return 'status-pill status-success';
 }
 
-function AtcTreeBranch({ nodes, onSelect, selectedCode, level = 0 }) {
+function AtcTreeBranch({ expandedCodes, nodes, onSelect, selectedCode, level = 0 }) {
   return (
     <div className="tree-group">
       {nodes.map((node) => {
         const isSelected = node.code === selectedCode;
+        const isExpanded = expandedCodes.has(node.code);
+        const hasChildren = Boolean(node.children?.length);
 
         return (
           <div key={node.code}>
             <button
-              className={`tree-node-leaf ${isSelected ? 'active' : ''}`.trim()}
+              aria-expanded={hasChildren ? isExpanded : undefined}
+              className={`tree-node-leaf ${isSelected ? 'active' : ''} ${isExpanded ? 'expanded' : ''}`.trim()}
               onClick={() => onSelect(node.code)}
               style={{ paddingLeft: `${0.75 + level * 0.7}rem` }}
               type="button"
             >
               <span>[{node.code}] {node.name}</span>
-              <AppIcon name="chevronRight" size={15} />
+              {hasChildren ? <AppIcon name="chevronRight" size={15} /> : null}
             </button>
-            {node.children?.length ? (
+            {hasChildren && isExpanded ? (
               <AtcTreeBranch
+                expandedCodes={expandedCodes}
                 level={level + 1}
                 nodes={node.children}
                 onSelect={onSelect}
@@ -87,8 +82,10 @@ export default function ATCClassification() {
   const [selectedCode, setSelectedCode] = useState('');
   const [selectedNode, setSelectedNode] = useState(null);
   const [medicines, setMedicines] = useState([]);
+  const [medicineTotal, setMedicineTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [isMonographOpen, setIsMonographOpen] = useState(false);
   const [pageState, setPageState] = useState({
     isLoading: true,
     errorMessage: ''
@@ -144,7 +141,7 @@ export default function ATCClassification() {
       try {
         const [nodeData, medicineData] = await Promise.all([
           getAtcNode(selectedCode),
-          listMedicines({ atcCode: selectedCode, limit: 20 })
+          listMedicines({ atcCode: selectedCode, includeDescendants: 'true', limit: 100 })
         ]);
 
         if (!isActive) {
@@ -153,6 +150,7 @@ export default function ATCClassification() {
 
         setSelectedNode(nodeData?.node || null);
         setMedicines(medicineData?.medicines || []);
+        setMedicineTotal(medicineData?.pagination?.total || medicineData?.medicines?.length || 0);
       } catch (error) {
         if (!isActive) {
           return;
@@ -160,6 +158,7 @@ export default function ATCClassification() {
 
         setSelectedNode(null);
         setMedicines([]);
+        setMedicineTotal(0);
         setPageState((current) => ({
           ...current,
           errorMessage: getApiMessage(error, 'Failed to load ATC detail')
@@ -173,6 +172,43 @@ export default function ATCClassification() {
       isActive = false;
     };
   }, [selectedCode]);
+
+  useEffect(() => {
+    if (!isMonographOpen || !selectedCode) {
+      return undefined;
+    }
+
+    let isActive = true;
+
+    async function refreshMonographData() {
+      try {
+        const [nodeData, medicineData] = await Promise.all([
+          getAtcNode(selectedCode),
+          listMedicines({ atcCode: selectedCode, includeDescendants: 'true', limit: 100 })
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        setSelectedNode(nodeData?.node || null);
+        setMedicines(medicineData?.medicines || []);
+        setMedicineTotal(medicineData?.pagination?.total || medicineData?.medicines?.length || 0);
+      } catch (_error) {
+        if (!isActive) {
+          return;
+        }
+
+        // Keep existing data visible if refresh fails while modal is open.
+      }
+    }
+
+    refreshMonographData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMonographOpen, selectedCode]);
 
   useEffect(() => {
     let isActive = true;
@@ -202,7 +238,47 @@ export default function ATCClassification() {
     };
   }, [debouncedSearchQuery]);
 
+  useEffect(() => {
+    if (!isMonographOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMonographOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMonographOpen]);
+
   const path = useMemo(() => findPath(tree, selectedCode), [selectedCode, tree]);
+  const expandedCodes = useMemo(() => new Set(path.map((item) => item.code)), [path]);
+  const monographSections = useMemo(() => {
+    if (!selectedNode) {
+      return [];
+    }
+
+    return [
+      {
+        title: 'Overview',
+        body: selectedNode.description || 'No detailed ATC overview is available for this code yet.'
+      },
+      {
+        title: 'Hierarchy Context',
+        body: path.length
+          ? `This code sits under ${path.map((item) => item.code).join(' > ')} in the current ATC hierarchy.`
+          : 'Hierarchy context is not available.'
+      },
+      {
+        title: 'System Mapping',
+        body: medicineTotal
+          ? `${medicineTotal} medicine record(s) in PIMS currently map to this code or its descendant ATC codes.`
+          : 'No medicines are currently mapped to this code in the PIMS database.'
+      }
+    ];
+  }, [medicineTotal, path, selectedNode]);
 
   return (
     <section className="split-page surface-card">
@@ -253,7 +329,12 @@ export default function ATCClassification() {
           <div className="helper-text">Loading ATC hierarchy...</div>
         ) : (
           <div className="tree-list">
-            <AtcTreeBranch nodes={tree} onSelect={setSelectedCode} selectedCode={selectedCode} />
+            <AtcTreeBranch
+              expandedCodes={expandedCodes}
+              nodes={tree}
+              onSelect={setSelectedCode}
+              selectedCode={selectedCode}
+            />
           </div>
         )}
       </aside>
@@ -290,7 +371,7 @@ export default function ATCClassification() {
                 {selectedNode?.description || 'Choose an ATC node from the tree to inspect its live medicines and child codes.'}
               </p>
             </div>
-            <button className="button-secondary" type="button">
+            <button className="button-secondary" onClick={() => setIsMonographOpen(true)} type="button">
               <AppIcon name="external" size={16} />
               View Monographs
             </button>
@@ -299,7 +380,7 @@ export default function ATCClassification() {
           <div className="detail-metrics">
             <div>
               <div className="caption">Available Medicines</div>
-              <strong style={{ fontSize: '1.9rem' }}>{medicines.length}</strong>
+              <strong style={{ fontSize: '1.9rem' }}>{medicineTotal}</strong>
             </div>
             <div>
               <div className="caption">Hierarchy Level</div>
@@ -328,7 +409,7 @@ export default function ATCClassification() {
               <AppIcon name="note" size={20} />
               <h3>Matched Medicines in System</h3>
             </div>
-            <div className="helper-text">Showing {medicines.length} live results</div>
+            <div className="helper-text">Showing {medicineTotal} live result(s)</div>
           </div>
 
           <div className="table-wrap">
@@ -372,6 +453,69 @@ export default function ATCClassification() {
           </div>
           <button className="button-secondary" type="button">Request Database Addition</button>
         </div>
+
+        {isMonographOpen ? (
+          <div className="user-modal-backdrop" onClick={() => setIsMonographOpen(false)} role="presentation">
+            <div
+              aria-labelledby="atc-monograph-title"
+              aria-modal="true"
+              className="user-modal atc-monograph-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className="panel-head">
+                <div className="page-title">
+                  <div className="section-title">
+                    <span className="pill">{selectedNode?.code || 'ATC'}</span>
+                    <h3 id="atc-monograph-title">{selectedNode?.name || 'ATC Monograph'}</h3>
+                  </div>
+                  <p className="helper-text">Monograph-style guidance for the selected ATC node and its mapped medicines.</p>
+                </div>
+                <button aria-label="Close monograph" className="button-ghost" onClick={() => setIsMonographOpen(false)} type="button">
+                  <AppIcon name="close" size={16} />
+                </button>
+              </div>
+
+              <div className="atc-monograph-grid">
+                {monographSections.map((section) => (
+                  <section className="atc-monograph-card" key={section.title}>
+                    <div className="caption">{section.title}</div>
+                    <p>{section.body}</p>
+                  </section>
+                ))}
+              </div>
+
+              <section className="atc-monograph-card">
+                <div className="caption">Child Codes</div>
+                <div className="pill-row">
+                  {selectedNode?.children?.length
+                    ? selectedNode.children.map((child) => <span className="pill" key={child.code}>{child.code}</span>)
+                    : <span className="pill">No child codes</span>}
+                </div>
+              </section>
+
+              <section className="atc-monograph-card">
+                <div className="caption">Mapped Medicines</div>
+                {medicines.length ? (
+                  <div className="mini-list">
+                    {medicines.map((medicine) => (
+                      <div className="mini-list-item" key={medicine._id || `${medicine.atcCode}-${medicine.name}`}>
+                        <div>
+                          <strong>{medicine.brand || medicine.name}</strong>
+                          <div className="helper-text">
+                            {medicine.genericName} · {medicine.strength || 'Strength N/A'} · {medicine.atcCode}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="helper-text">No mapped medicines are available for this monograph yet.</div>
+                )}
+              </section>
+            </div>
+          </div>
+        ) : null}
       </section>
     </section>
   );

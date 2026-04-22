@@ -23,7 +23,10 @@ import Reports from '../pages/Reports';
 import Admin from '../pages/Admin';
 import ChangePassword from '../pages/ChangePassword';
 import InventoryAudit from '../pages/InventoryAudit';
+import PatientRecordDetails from '../pages/PatientRecordDetails';
 import PatientDashboard from '../pages/PatientDashboard';
+import PatientProfile from '../pages/PatientProfile';
+import PatientPrescriptions from '../pages/PatientPrescriptions';
 import PatientLayout from '../layouts/PatientLayout';
 import { getRoleHomePath, getStoredRole, getStoredToken, isValidRole } from '../utils/session';
 
@@ -121,6 +124,16 @@ export default function AppRoutes() {
         )}
       />
       <Route
+        path="/patients/:id/details"
+        element={(
+          <ProtectedRoute allowedRoles={[ROLES.DOCTOR, ROLES.ADMIN]}>
+            <MainLayout>
+              <PatientRecordDetails />
+            </MainLayout>
+          </ProtectedRoute>
+        )}
+      />
+      <Route
         path="/inventory"
         element={(
           <ProtectedRoute allowedRoles={[ROLES.PHARMACIST]}>
@@ -186,6 +199,26 @@ export default function AppRoutes() {
           <ProtectedRoute allowedRoles={[ROLES.PATIENT]}>
             <PatientLayout>
               <PatientDashboard />
+            </PatientLayout>
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/profile"
+        element={(
+          <ProtectedRoute allowedRoles={[ROLES.PATIENT]}>
+            <PatientLayout>
+              <PatientProfile />
+            </PatientLayout>
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/prescriptions"
+        element={(
+          <ProtectedRoute allowedRoles={[ROLES.PATIENT]}>
+            <PatientLayout>
+              <PatientPrescriptions />
             </PatientLayout>
           </ProtectedRoute>
         )}

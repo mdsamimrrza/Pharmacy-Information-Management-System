@@ -1,11 +1,14 @@
-import { useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import AppIcon from './AppIcon';
 import DarkModeToggle from './DarkModeToggle';
 import { getPageTitle } from '../constants/navigation';
 import { ROLE_LABELS, ROLES } from '../constants/roles';
 import { roleProfiles } from '../data/mockData';
-import { getStoredDisplayName, getStoredRole, getStoredUser } from '../utils/session';
+import { logout } from '../api/pimsApi';
+import { clearSession, getRoleAccessPath, getStoredDisplayName, getStoredRole, getStoredUser } from '../utils/session';
+import { clearAuthState } from '../store/slices/authSlice';
 
 function getInitials(name) {
   return String(name || '')
@@ -17,24 +20,90 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function getPatientPortalName(user, fallbackName) {
+  const patientName = String(user?.patient?.name || '').trim();
+  if (patientName) {
+    return patientName;
+  }
+
+  return fallbackName;
+}
+
 export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebarOpen = true }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
   const authRole = useSelector((state) => state.auth.role);
   const authUser = useSelector((state) => state.auth.user);
+  const profileMenuRef = useRef(null);
   const isPatientPortal = location.pathname.startsWith('/patient');
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const role = authRole || getStoredRole();
   const storedUser = authUser || getStoredUser();
   const fallbackProfile = roleProfiles[role] || roleProfiles[ROLES.DOCTOR];
-  const displayName = [storedUser?.firstName, storedUser?.lastName].filter(Boolean).join(' ').trim()
+  const patientRecord = storedUser?.patient || null;
+  const accountDisplayName = [storedUser?.firstName, storedUser?.lastName].filter(Boolean).join(' ').trim()
     || storedUser?.name
     || storedUser?.email
     || getStoredDisplayName()
     || fallbackProfile.name;
+  const displayName = role === ROLES.PATIENT ? getPatientPortalName(storedUser, accountDisplayName) : accountDisplayName;
   const title = ROLE_LABELS[storedUser?.role] || fallbackProfile.title;
   const initials = getInitials(displayName);
+  const patientId = patientRecord?.patientId || storedUser?.patientId || '';
+  const emailAddress = storedUser?.email || '';
+
+  useEffect(() => {
+    setIsProfileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!profileMenuRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isProfileMenuOpen]);
+
+  const handleLogout = async () => {
+    const roleAtLogout = getStoredRole() || role;
+    const redirectPath = getRoleAccessPath(roleAtLogout);
+
+    setIsProfileMenuOpen(false);
+    navigate(redirectPath, { replace: true });
+
+    try {
+      await logout();
+    } catch (_error) {
+      // Local cleanup still matters even if the backend session helper call fails.
+    } finally {
+      clearSession();
+      dispatch(clearAuthState());
+    }
+  };
 
   return (
-    <header className="topbar">
+    <header className={`topbar ${isPatientPortal ? 'topbar-patient' : ''}`.trim()}>
       {showMenuToggle ? (
         <button
           aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
@@ -59,7 +128,7 @@ export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebar
         <div className="caption">{title}</div>
         <h1>{getPageTitle(location.pathname)}</h1>
       </div>
-      <div className="topbar-actions">
+      <div className={`topbar-actions ${isPatientPortal ? 'patient-topbar-actions' : ''}`.trim()}>
         {!isPatientPortal ? (
           <>
             <label className="search-field topbar-search">
@@ -73,17 +142,87 @@ export default function Topbar({ showMenuToggle = false, onMenuToggle, isSidebar
           </>
         ) : (
           <>
-            <span className="badge badge-accent">Patient Portal</span>
-            <DarkModeToggle />
+            <div className="patient-topbar-meta">
+              <span className="badge badge-accent">Patient Portal</span>
+
+              <div className={`profile-menu ${isProfileMenuOpen ? 'is-open' : ''}`.trim()} ref={profileMenuRef}>
+                <button
+                  aria-expanded={isProfileMenuOpen}
+                  aria-haspopup="dialog"
+                  className="profile-chip profile-chip-button"
+                  onClick={() => setIsProfileMenuOpen((current) => !current)}
+                  type="button"
+                >
+                  <div className="profile-chip-copy">
+                    <div className="profile-chip-label">{displayName}</div>
+                    <div className="helper-text">{title}</div>
+                  </div>
+                  <div className="profile-avatar">{initials}</div>
+                </button>
+
+                {isProfileMenuOpen ? (
+                  <div aria-label="Patient account menu" className="profile-dropdown">
+                    <div className="profile-dropdown-head">
+                      <div className="profile-avatar profile-dropdown-avatar">{initials}</div>
+                      <div className="profile-dropdown-copy">
+                        <strong>{displayName}</strong>
+                        <span className="helper-text">{title}</span>
+                      </div>
+                    </div>
+
+                    <div className="profile-dropdown-meta">
+                      <div className="profile-dropdown-row">
+                        <AppIcon name="shield" size={16} />
+                        <span>Secure patient portal access</span>
+                      </div>
+                      {patientId ? (
+                        <div className="profile-dropdown-row">
+                          <AppIcon name="users" size={16} />
+                          <span>Patient ID {patientId}</span>
+                        </div>
+                      ) : null}
+                      {emailAddress ? (
+                        <div className="profile-dropdown-row">
+                          <AppIcon name="info" size={16} />
+                          <span>{emailAddress}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="profile-dropdown-actions">
+                      <Link
+                        className="button-secondary profile-dropdown-button"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        to="/patient/profile"
+                      >
+                        <AppIcon name="users" size={16} />
+                        View Details
+                      </Link>
+                      <button className="button-ghost profile-dropdown-button" onClick={handleLogout} type="button">
+                        <AppIcon name="logout" size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="patient-topbar-theme">
+              <DarkModeToggle />
+            </div>
           </>
         )}
-        <div className="profile-chip">
-          <div>
-            <div style={{ fontWeight: 700 }}>{displayName}</div>
-            <div className="helper-text">{title}</div>
+
+        {!isPatientPortal ? (
+          <div className="profile-chip">
+            <div>
+              <div style={{ fontWeight: 700 }}>{displayName}</div>
+              <div className="helper-text">{title}</div>
+            </div>
+            <div className="profile-avatar">{initials}</div>
           </div>
-          <div className="profile-avatar">{initials}</div>
-        </div>
+        ) : null}
       </div>
     </header>
   );

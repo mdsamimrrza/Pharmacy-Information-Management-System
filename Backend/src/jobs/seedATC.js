@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import dotenv from 'dotenv'
 import { connectDatabase } from '../config/db.js'
 import ATCCode from '../models/ATCCode.model.js'
+import atcSeedDocs from '../data/atc.seed.js'
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = dirname(currentFilePath)
@@ -181,14 +182,19 @@ export const loadAtcDocsFromFile = async (csvPath = defaultCsvPath) => {
 export const seedAtcCodes = async (csvPath = defaultCsvPath) => {
   const resolvedPath = resolve(csvPath)
   const docs = await loadAtcDocsFromFile(resolvedPath)
+  return seedAtcDocsToDatabase(docs, { source: resolvedPath })
+}
 
-  if (docs.length === 0) {
-    throw new Error('No ATC rows found in the CSV file')
+export const seedAtcDocsToDatabase = async (docs, { source = 'embedded seed data' } = {}) => {
+  const normalizedDocs = Array.isArray(docs) ? docs : []
+
+  if (normalizedDocs.length === 0) {
+    throw new Error('No ATC rows found to seed')
   }
 
   await connectDatabase()
 
-  const operations = docs.map((doc) => ({
+  const operations = normalizedDocs.map((doc) => ({
     updateOne: {
       filter: { code: doc.code },
       update: { $set: doc },
@@ -199,20 +205,24 @@ export const seedAtcCodes = async (csvPath = defaultCsvPath) => {
   const result = await ATCCode.bulkWrite(operations, { ordered: false })
 
   return {
-    csvPath: resolvedPath,
-    rows: docs.length,
+    source,
+    rows: normalizedDocs.length,
     inserted: result.upsertedCount || 0,
     updated: result.modifiedCount || 0,
     matched: result.matchedCount || 0,
   }
 }
 
+export const seedEmbeddedAtcCodes = async () => seedAtcDocsToDatabase(atcSeedDocs)
+
 const run = async () => {
-  const csvPath = process.argv[2] ? resolve(process.argv[2]) : defaultCsvPath
+  const inputArg = process.argv[2]
 
   try {
-    const result = await seedAtcCodes(csvPath)
-    console.log(`Seeded ${result.rows} ATC rows from ${result.csvPath}`)
+    const result = inputArg
+      ? await seedAtcCodes(resolve(inputArg))
+      : await seedEmbeddedAtcCodes()
+    console.log(`Seeded ${result.rows} ATC rows from ${result.source}`)
     console.log(`Inserted: ${result.inserted}, Updated: ${result.updated}, Matched: ${result.matched}`)
     process.exit(0)
   } catch (error) {

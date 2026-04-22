@@ -27,6 +27,8 @@ export const PAGE_TITLES = {
   '/inventory/audit': 'Inventory Audit',
   '/admin/users': 'User Management',
   '/patient': 'Patient Portal',
+  '/patient/profile': 'Health Record',
+  '/patient/prescriptions': 'Prescription Center',
   '/patient/change-password': 'Change Password',
   '/change-password': 'Change Password'
 };

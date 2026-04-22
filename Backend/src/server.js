@@ -15,12 +15,21 @@ dotenv.config({ path: envPath })
 const start = async () => {
   validateEnv()
   await connectDatabase()
-  startBackgroundJobs()
 
   const port = Number(process.env.PORT || 5000)
-
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`PIMS backend running on port ${port}`)
+    startBackgroundJobs()
+  })
+
+  server.on('error', (error) => {
+    if (error?.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Stop the other backend process or change PORT in Backend/.env.`)
+    } else {
+      console.error('Backend server failed to start', error)
+    }
+
+    process.exit(1)
   })
 }
 

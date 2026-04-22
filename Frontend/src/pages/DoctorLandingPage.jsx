@@ -29,12 +29,12 @@ export default function DoctorLandingPage() {
 
           <div className="doctor-hero-actions">
             <Link className="button-primary login-submit" to="/doctor/login">
-              Sign up - Doctor
+              Enter Doctor Portal
             </Link>
             <Link className="button-ghost" to="/pharmacist/access">
-              Connect to Pharmacist
+              Pharmacist Access
             </Link>
-            <span className="helper-text">Login (existing users)</span>
+            <span className="helper-text">Use your existing credentials to continue.</span>
           </div>
         </section>
 
@@ -110,7 +110,7 @@ export default function DoctorLandingPage() {
       </footer>
 
       <div className="doctor-landing-copyright helper-text">
-        © 2026 RxConnect. All rights reserved. Professional Prescription Wireframe System.
+        (c) 2026 RxConnect. Secure clinical coordination platform.
       </div>
     </div>
   );

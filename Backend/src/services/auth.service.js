@@ -161,7 +161,15 @@ export const createPasswordResetRequest = async ({ email }) => {
   user.passwordResetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000)
   await user.save()
 
-  const resetUrl = `${String(process.env.CLIENT_URL || '').replace(/\/$/, '')}/reset-password?email=${encodeURIComponent(
+  // Pick the primary live URL — prefer a non-localhost origin from the CLIENT_URL list
+  const allOrigins = String(process.env.CLIENT_URL || 'http://localhost:5173')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+
+  const primaryOrigin = allOrigins.find((u) => !u.includes('localhost')) || allOrigins[0]
+
+  const resetUrl = `${primaryOrigin.replace(/\/$/, '')}/reset-password?email=${encodeURIComponent(
     user.email
   )}&token=${encodeURIComponent(resetToken)}`
 

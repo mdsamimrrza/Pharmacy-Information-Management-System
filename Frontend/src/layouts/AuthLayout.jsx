@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 
 export default function AuthLayout({ children }) {
@@ -5,14 +6,14 @@ export default function AuthLayout({ children }) {
     <div className="auth-shell">
       <div className="auth-topbar">
         <span className="helper-text">PIMS secure access</span>
-        <button className="button-ghost" type="button">
+        <Link className="button-ghost" to="/forgot-password">
           <AppIcon name="info" size={16} />
-          Support Help
-        </button>
+          Password Help
+        </Link>
       </div>
       <main className="login-page">{children}</main>
       <footer className="auth-footer">
-        <span>© 2026 PIMS Medical Informatics Inc. · System status: Operational</span>
+        <span>(c) 2026 PIMS Medical Informatics Inc. | System status: Operational</span>
         <div className="auth-footer-links">
           <span>Privacy Policy</span>
           <span>Security Audit</span>
