@@ -169,6 +169,46 @@ export default function PatientRecordDetails() {
     };
   }, [id, location.state?.patient]);
 
+  // Listen for global data changes and reload this patient record when relevant
+  useEffect(() => {
+    let isActive = true;
+
+    async function handleDataChanged(event) {
+      const resource = event?.detail?.resource;
+      if (resource && !['patients', 'prescriptions', 'users'].includes(resource)) {
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const [patientData, prescriptionData] = await Promise.all([
+          getPatientById(id),
+          listPrescriptions({ patientId: id, limit: 50 })
+        ]);
+
+        if (!isActive) return;
+
+        const nextPatient = patientData?.patient || location.state?.patient || null;
+        const nextPrescriptions = prescriptionData?.prescriptions || [];
+
+        setPatient(nextPatient);
+        setPrescriptions(nextPrescriptions);
+        setSelectedPrescriptionId((current) => (
+          nextPrescriptions.some((item) => item._id === current)
+            ? current
+            : nextPrescriptions[0]?._id || ''
+        ));
+      } catch (_error) {
+        // keep existing error handling from primary loader
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    }
+
+    window.addEventListener('pims:data:changed', handleDataChanged);
+    return () => { isActive = false; window.removeEventListener('pims:data:changed', handleDataChanged); };
+  }, [id, location.state?.patient]);
+
   const selectedPrescription = useMemo(
     () => prescriptions.find((item) => item._id === selectedPrescriptionId) || prescriptions[0] || null,
     [prescriptions, selectedPrescriptionId]

@@ -227,6 +227,8 @@ export default function Admin() {
       setIsModalOpen(false);
       setPage(1);
       dispatch(fetchAdminUsers({ ...queryParams, page: 1 }));
+      // notify other views that user data changed
+      try { window.dispatchEvent(new CustomEvent('pims:data:changed', { detail: { resource: 'users' } })); } catch (_) {}
       notifySuccess('User created', `${user.firstName} ${user.lastName} created successfully.`);
     } catch (error) {
       notifyError('User creation failed', String(error || 'Failed to create user'));
@@ -249,6 +251,8 @@ export default function Admin() {
       setIsPortalModalOpen(false);
       setPage(1);
       dispatch(fetchAdminUsers({ ...queryParams, page: 1 }));
+      // creating a patient portal creates a linked user account — notify other views
+      try { window.dispatchEvent(new CustomEvent('pims:data:changed', { detail: { resource: 'users' } })); } catch (_) {}
       notifySuccess(
         'Patient portal created',
         `${result?.patient?.name || 'Patient'} can now log in with the linked account.`
@@ -273,7 +277,8 @@ export default function Admin() {
         try {
           dispatch(clearAdminUsersError());
           await dispatch(setAdminUserStatus({ userId: user._id, isActive: nextIsActive })).unwrap();
-          dispatch(fetchAdminUsers(queryParams));
+              dispatch(fetchAdminUsers(queryParams));
+              try { window.dispatchEvent(new CustomEvent('pims:data:changed', { detail: { resource: 'users' } })); } catch (_) {}
           notifySuccess(
             `User ${nextIsActive ? 'activated' : 'deactivated'}`,
             `${fullName} is now ${nextIsActive ? 'active' : 'inactive'}.`
@@ -298,9 +303,11 @@ export default function Admin() {
         try {
           dispatch(clearAdminUsersError());
           await dispatch(permanentlyDeleteAdminUser(user._id)).unwrap();
-          dispatch(fetchAdminUsers(queryParams));
-          notifySuccess('User permanently deleted', `${fullName} has been removed from the system.`);
-          setManagedUser(null);
+              dispatch(fetchAdminUsers(queryParams));
+              // inform other open views that user data changed
+              try { window.dispatchEvent(new CustomEvent('pims:data:changed', { detail: { resource: 'users' } })); } catch (_) {}
+              notifySuccess('User permanently deleted', `${fullName} has been removed from the system.`);
+              setManagedUser(null);
         } catch (error) {
           notifyError('Permanent delete failed', String(error || 'Failed to permanently delete user'));
         }

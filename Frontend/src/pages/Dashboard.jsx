@@ -143,6 +143,47 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Listen to global changes (for example when Admin updates/deletes users or patients)
+  useEffect(() => {
+    let isActive = true;
+
+    async function handleDataChanged(event) {
+      const resource = event?.detail?.resource;
+      // if specific resource isn't provided, or resource affects patients/prescriptions, refresh
+      if (resource && !['patients', 'prescriptions', 'users'].includes(resource)) {
+        return;
+      }
+
+      try {
+        const [prescriptionData, draftData, patientData] = await Promise.all([
+          listPrescriptions({ limit: 12 }),
+          listPrescriptions({ limit: 10, status: 'Draft' }),
+          listPatients({ limit: 25 })
+        ]);
+
+        if (!isActive) return;
+
+        const prescriptions = prescriptionData?.prescriptions || [];
+        const drafts = draftData?.prescriptions || [];
+        const patients = patientData?.patients || [];
+
+        setRecentPrescriptions(prescriptions.slice(0, 5));
+        setDraftPrescriptions(drafts);
+        setOverview({
+          todayTotal: prescriptions.filter((item) => isSameDay(item.createdAt)).length,
+          scheduled: prescriptions.filter((item) => item.status === 'Pending' || item.status === 'Processing').length,
+          newPatients: patients.filter((item) => isSameDay(item.createdAt)).length,
+          urgentCount: prescriptions.filter((item) => item.isUrgent).length
+        });
+      } catch (_err) {
+        // ignore — keep existing state; errors shown by original load
+      }
+    }
+
+    window.addEventListener('pims:data:changed', handleDataChanged);
+    return () => { isActive = false; window.removeEventListener('pims:data:changed', handleDataChanged); };
+  }, []);
+
   useEffect(() => {
     let isActive = true;
 
