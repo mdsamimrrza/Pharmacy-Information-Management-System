@@ -98,13 +98,11 @@ export default function Prescription() {
   const [medicineResults, setMedicineResults] = useState([]);
   const [urgent, setUrgent] = useState(false);
   const [allowRefills, setAllowRefills] = useState(false);
-  const [message, setMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [items, setItems] = useState([]);
   const [portalCredentials, setPortalCredentials] = useState(null);
-  const { notifySuccess, notifyWarning } = useToast();
+  const { notifySuccess, notifyWarning, notifyError } = useToast();
 
   const debouncedMedicineQuery = useDebouncedValue(medicineQuery, 300);
   const debouncedPatientQuery = useDebouncedValue(`${patient.recordId} ${patient.name}`.trim(), 350);
@@ -117,7 +115,7 @@ export default function Prescription() {
         const data = await getPrescription(editId);
         const rx = data?.prescription;
         if (!rx || rx.status !== 'Draft') {
-          notifyWarning('Invalid Draft', 'This prescription is not a draft or does not exist.');
+          notifyWarning('Invalid Draft', 'This prescription is not a draft or does not exist.', 4000);
           navigate('/prescription/new');
           return;
         }
@@ -145,9 +143,9 @@ export default function Prescription() {
           durationDays: item.durationDays,
           instructions: item.instructions
         })));
-        setMessage(`Loaded draft ${rx.rxId} for editing.`);
+        notifySuccess('Draft Loaded', `Loaded draft ${rx.rxId} for editing.`, 3000);
       } catch (error) {
-        setErrorMessage(getApiMessage(error, 'Failed to load draft prescription'));
+        notifyError('Failed to Load Draft', getApiMessage(error, 'Could not load prescription'), 5000);
       }
     }
 
@@ -224,8 +222,7 @@ export default function Prescription() {
       email: '',
       allergiesText: (entry.allergies || []).map((allergy) => allergy.substance).join(', ')
     });
-    setMessage(`Loaded patient record ${entry.patientId}.`);
-    setErrorMessage('');
+    notifySuccess('Patient Loaded', `Loaded patient record ${entry.patientId}.`, 3000);
   };
 
   const updatePatientField = (field, value) => {
@@ -258,13 +255,11 @@ export default function Prescription() {
 
   const handleDraftSave = async () => {
     if (draftValidation.title !== 'Ready') {
-      setErrorMessage(draftValidation.detail);
+      notifyWarning('Cannot Save Draft', draftValidation.detail, 4000);
       return;
     }
 
     setIsSavingDraft(true);
-    setErrorMessage('');
-    setMessage('');
 
     try {
       const prescriptionPayload = {
@@ -300,39 +295,38 @@ export default function Prescription() {
 
       if (editId) {
         await updateDraftPrescription(editId, prescriptionPayload);
-        setMessage('Draft prescription updated successfully.');
+        notifySuccess('Draft Updated', 'Draft prescription updated successfully.', 3000);
       } else {
         const response = await createPrescription(prescriptionPayload);
         const rx = response?.prescription;
-        setMessage(`Draft prescription ${rx?.rxId} saved successfully.`);
+        notifySuccess('Draft Saved', `Draft prescription ${rx?.rxId} saved successfully.`, 3000);
         if (rx?._id) {
           navigate(`/prescription/edit/${rx._id}`, { replace: true });
         }
       }
-      notifySuccess('Draft Saved', 'Your changes have been saved as a draft.', 3000);
     } catch (error) {
-      setErrorMessage(getApiMessage(error, 'Failed to save draft'));
+      notifyError('Draft Save Failed', getApiMessage(error, 'Failed to save draft'), 5000);
     } finally {
       setIsSavingDraft(false);
     }
   };
 
+  const handleSetErrorMessage = (title, message) => {
+    notifyError(title, message, 5000);
+  };
+
   const handleSubmit = async () => {
     if (validation.title !== 'Clear') {
-      setMessage('');
-      setErrorMessage(validation.detail);
+      notifyWarning('Cannot Submit', validation.detail, 4000);
       return;
     }
 
     if (needsPortalInviteEmail) {
-      setMessage('');
-      setErrorMessage('Patient email is required to create the portal invite for this existing patient.');
+      notifyWarning('Email Required', 'Patient email is required to create the portal invite for this existing patient.', 4000);
       return;
     }
 
     setIsSubmitting(true);
-    setMessage('');
-    setErrorMessage('');
 
     try {
       let patientDbId = selectedPatientDbId;
@@ -404,7 +398,7 @@ export default function Prescription() {
         }));
       }
 
-      setMessage(`Prescription ${createdPrescription?.rxId || ''} submitted to pharmacy successfully.`);
+      notifySuccess('Prescription Submitted', `Prescription ${createdPrescription?.rxId || ''} submitted to pharmacy successfully.`, 4000);
       // Notify other views (e.g., dashboard) that prescriptions/patient data changed
       try { window.dispatchEvent(new CustomEvent('pims:data:changed', { detail: { resource: 'prescriptions' } })); } catch (_) {}
       setItems([]);
@@ -414,33 +408,19 @@ export default function Prescription() {
       setSelectedPatientDbId(createdPatientDbId);
       setSelectedPatientHasPortal(Boolean(patientPortal?.user));
     } catch (error) {
-      setErrorMessage(getApiMessage(error, 'Failed to submit prescription'));
+      notifyError('Submission Failed', getApiMessage(error, 'Failed to submit prescription'), 5000);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Helper to show error as toast
+  const showError = (title, message) => {
+    notifyError(title, message, 5000);
+  };
+
   return (
     <section className="page">
-      {message ? (
-        <div className="notice-banner">
-          <div>
-            <strong>Prescription workflow updated</strong>
-            <div className="helper-text">{message}</div>
-          </div>
-          <button className="button-ghost" onClick={() => setMessage('')} type="button">Dismiss</button>
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="notice-banner">
-          <div>
-            <strong>Prescription submission failed</strong>
-            <div className="helper-text">{errorMessage}</div>
-          </div>
-        </div>
-      ) : null}
-
       <div className="prescription-form-grid">
         <section className="panel">
           <div className="section-title">
